@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Seri Iskandar Weather Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans">
+
+    <!-- Top Header -->
+    <header class="bg-blue-700 text-white p-5 shadow-md">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <div>
+                <h1 class="text-xl font-bold">🌤️ Seri Iskandar IoT Weather Dashboard</h1>
+                <p class="text-blue-200 text-xs mt-1">72-Hour Continuous Series</p>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto p-6">
+
+        <!-- Day Filter & Parameter Selector -->
+        <div class="bg-white p-4 rounded-xl shadow-sm border mb-6 flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center gap-2">
+                <span class="text-sm font-semibold text-slate-600">📅 Day:</span>
+                <button onclick="setDay('ALL')" id="btn-ALL" class="day-btn px-3 py-1.5 text-sm rounded bg-blue-600 text-white font-medium">All (72h)</button>
+                <button onclick="setDay('2026-11-10')" id="btn-2026-11-10" class="day-btn px-3 py-1.5 text-sm rounded bg-white border text-slate-700 font-medium">10 November 2026</button>
+                <button onclick="setDay('2026-11-11')" id="btn-2026-11-11" class="day-btn px-3 py-1.5 text-sm rounded bg-white border text-slate-700 font-medium">11 November 2026</button>
+                <button onclick="setDay('2026-11-12')" id="btn-2026-11-12" class="day-btn px-3 py-1.5 text-sm rounded bg-white border text-slate-700 font-medium">12 November 2026</button>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <span class="text-sm font-semibold text-slate-600">📊 Metric:</span>
+                <select id="metricSelect" onchange="renderDashboard()" class="border p-2 text-sm rounded bg-slate-50 font-medium">
+                    <option value="temp">Temperature (°C)</option>
+                    <option value="humidity">Humidity (%)</option>
+                    <option value="rain">Precipitation (mm)</option>
+                    <option value="wind">Wind Speed (km/h)</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Main Chart Section -->
+        <div class="bg-white p-6 rounded-xl shadow-sm border mb-6">
+            <h3 id="chartTitle" class="font-bold text-slate-700 mb-4">Hourly Temperature Trend</h3>
+            <div class="relative h-72">
+                <canvas id="mainChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Data Table -->
+        <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+            <div class="p-4 border-b">
+                <h3 class="font-bold text-slate-700">📋 Weather Logs</h3>
+            </div>
+            <div class="overflow-x-auto max-h-80">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-slate-100 text-slate-600 sticky top-0">
+                        <tr>
+                            <th class="p-3">Date & Time</th>
+                            <th class="p-3">Temperature</th>
+                            <th class="p-3">Humidity</th>
+                            <th class="p-3">Rainfall</th>
+                            <th class="p-3">Wind Speed</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody" class="divide-y"></tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- JavaScript Logic -->
+    <script>
+        const rawData = [
+            {"time":"2026-11-10T00:00","temp":25.1,"humidity":100,"rain":0,"wind":0.4},
+            {"time":"2026-11-10T01:00","temp":25.0,"humidity":100,"rain":0,"wind":2.4},
+            {"time":"2026-11-10T02:00","temp":25.0,"humidity":96,"rain":0,"wind":6.9},
+            {"time":"2026-11-10T03:00","temp":24.7,"humidity":95,"rain":0,"wind":6.6},
+            {"time":"2026-11-10T04:00","temp":24.5,"humidity":96,"rain":0,"wind":4.1},
+            {"time":"2026-11-10T05:00","temp":24.6,"humidity":95,"rain":0,"wind":3.3},
+            {"time":"2026-11-10T06:00","temp":24.6,"humidity":94,"rain":0,"wind":4.0},
+            {"time":"2026-11-10T07:00","temp":24.4,"humidity":95,"rain":0,"wind":4.2},
+            {"time":"2026-11-10T08:00","temp":25.0,"humidity":93,"rain":0.3,"wind":7.8},
+            {"time":"2026-11-10T09:00","temp":26.9,"humidity":89,"rain":0,"wind":1.9},
+            {"time":"2026-11-10T10:00","temp":28.5,"humidity":81,"rain":0,"wind":2.5},
+            {"time":"2026-11-10T11:00","temp":29.2,"humidity":78,"rain":0,"wind":3.8},
+            {"time":"2026-11-10T12:00","temp":29.4,"humidity":78,"rain":0,"wind":6.1},
+            {"time":"2026-11-10T13:00","temp":28.2,"humidity":87,"rain":4.3,"wind":4.8},
+            {"time":"2026-11-10T14:00","temp":28.0,"humidity":86,"rain":1.8,"wind":7.0},
+            {"time":"2026-11-10T15:00","temp":25.6,"humidity":96,"rain":8.9,"wind":8.8},
+            {"time":"2026-11-10T16:00","temp":25.6,"humidity":95,"rain":2.1,"wind":3.5},
+            {"time":"2026-11-10T17:00","temp":25.8,"humidity":96,"rain":2.0,"wind":5.5},
+            {"time":"2026-11-10T18:00","temp":25.7,"humidity":95,"rain":0.8,"wind":4.2},
+            {"time":"2026-11-10T19:00","temp":25.4,"humidity":98,"rain":0.3,"wind":2.7},
+            {"time":"2026-11-10T20:00","temp":25.3,"humidity":99,"rain":0.2,"wind":4.4},
+            {"time":"2026-11-10T21:00","temp":25.2,"humidity":98,"rain":0.2,"wind":3.5},
+            {"time":"2026-11-10T22:00","temp":25.1,"humidity":98,"rain":0.3,"wind":4.3},
+            {"time":"2026-11-10T23:00","temp":25.0,"humidity":98,"rain":0.4,"wind":2.6},
+            {"time":"2026-11-11T00:00","temp":25.1,"humidity":96,"rain":0.2,"wind":1.3},
+            {"time":"2026-11-11T01:00","temp":25.1,"humidity":95,"rain":0.2,"wind":0.9},
+            {"time":"2026-11-11T02:00","temp":24.9,"humidity":96,"rain":0.1,"wind":1.1},
+            {"time":"2026-11-11T03:00","temp":24.9,"humidity":96,"rain":0.2,"wind":1.4},
+            {"time":"2026-11-11T04:00","temp":24.8,"humidity":95,"rain":0.4,"wind":0.6},
+            {"time":"2026-11-11T05:00","temp":24.5,"humidity":98,"rain":1.0,"wind":2.1},
+            {"time":"2026-11-11T06:00","temp":24.4,"humidity":99,"rain":0.7,"wind":2.8},
+            {"time":"2026-11-11T07:00","temp":24.4,"humidity":99,"rain":0.3,"wind":3.3},
+            {"time":"2026-11-11T08:00","temp":24.9,"humidity":98,"rain":0.1,"wind":5.0},
+            {"time":"2026-11-11T09:00","temp":26.1,"humidity":93,"rain":0.0,"wind":4.1},
+            {"time":"2026-11-11T10:00","temp":27.8,"humidity":83,"rain":0.1,"wind":3.1},
+            {"time":"2026-11-11T11:00","temp":29.1,"humidity":78,"rain":0.2,"wind":4.8},
+            {"time":"2026-11-11T12:00","temp":29.6,"humidity":77,"rain":0.3,"wind":6.2},
+            {"time":"2026-11-11T13:00","temp":30.3,"humidity":74,"rain":0.3,"wind":7.0},
+            {"time":"2026-11-11T14:00","temp":29.8,"humidity":76,"rain":0.4,"wind":6.0},
+            {"time":"2026-11-11T15:00","temp":25.0,"humidity":97,"rain":10.5,"wind":10.2},
+            {"time":"2026-11-11T16:00","temp":25.3,"humidity":96,"rain":3.0,"wind":1.7},
+            {"time":"2026-11-11T17:00","temp":25.8,"humidity":95,"rain":2.0,"wind":4.2},
+            {"time":"2026-11-11T18:00","temp":26.0,"humidity":96,"rain":0.7,"wind":2.7},
+            {"time":"2026-11-11T19:00","temp":25.6,"humidity":98,"rain":0.2,"wind":3.2},
+            {"time":"2026-11-11T20:00","temp":25.4,"humidity":99,"rain":0.2,"wind":4.3},
+            {"time":"2026-11-11T21:00","temp":25.4,"humidity":98,"rain":0.0,"wind":3.3},
+            {"time":"2026-11-11T22:00","temp":25.2,"humidity":99,"rain":0.0,"wind":2.5},
+            {"time":"2026-11-11T23:00","temp":25.1,"humidity":98,"rain":0.0,"wind":1.5},
+            {"time":"2026-11-12T00:00","temp":25.0,"humidity":98,"rain":0.0,"wind":2.4},
+            {"time":"2026-11-12T01:00","temp":25.0,"humidity":96,"rain":0.0,"wind":1.3},
+            {"time":"2026-11-12T02:00","temp":24.6,"humidity":98,"rain":0.0,"wind":2.4},
+            {"time":"2026-11-12T03:00","temp":24.6,"humidity":96,"rain":0.0,"wind":1.3},
+            {"time":"2026-11-12T04:00","temp":24.1,"humidity":98,"rain":0.5,"wind":2.9},
+            {"time":"2026-11-12T05:00","temp":23.8,"humidity":99,"rain":1.4,"wind":4.7},
+            {"time":"2026-11-12T06:00","temp":23.7,"humidity":99,"rain":0.3,"wind":2.8},
+            {"time":"2026-11-12T07:00","temp":23.8,"humidity":97,"rain":0.1,"wind":1.3},
+            {"time":"2026-11-12T08:00","temp":24.2,"humidity":97,"rain":0.5,"wind":2.0},
+            {"time":"2026-11-12T09:00","temp":25.1,"humidity":94,"rain":0.2,"wind":2.3},
+            {"time":"2026-11-12T10:00","temp":26.9,"humidity":84,"rain":0.0,"wind":2.3},
+            {"time":"2026-11-12T11:00","temp":28.2,"humidity":79,"rain":0.0,"wind":4.5},
+            {"time":"2026-11-12T12:00","temp":28.8,"humidity":80,"rain":0.2,"wind":5.2},
+            {"time":"2026-11-12T13:00","temp":29.4,"humidity":78,"rain":0.3,"wind":5.2},
+            {"time":"2026-11-12T14:00","temp":29.9,"humidity":76,"rain":0.2,"wind":3.1},
+            {"time":"2026-11-12T15:00","temp":27.2,"humidity":91,"rain":2.1,"wind":11.7},
+            {"time":"2026-11-12T16:00","temp":26.9,"humidity":91,"rain":0.7,"wind":4.8},
+            {"time":"2026-11-12T17:00","temp":27.4,"humidity":89,"rain":0.3,"wind":3.5},
+            {"time":"2026-11-12T18:00","temp":25.8,"humidity":95,"rain":2.6,"wind":3.2},
+            {"time":"2026-11-12T19:00","temp":25.5,"humidity":99,"rain":0.9,"wind":3.1},
+            {"time":"2026-11-12T20:00","temp":25.5,"humidity":99,"rain":0.3,"wind":3.0},
+            {"time":"2026-11-12T21:00","temp":25.0,"humidity":99,"rain":0.2,"wind":7.0},
+            {"time":"2026-11-12T22:00","temp":24.3,"humidity":99,"rain":1.5,"wind":6.7},
+            {"time":"2026-11-12T23:00","temp":24.0,"humidity":99,"rain":0.7,"wind":11.3}
+        ];
+
+        let selectedDay = 'ALL';
+        let chartInstance = null;
+
+        function formatDate(iso) {
+            const [d, t] = iso.split('T');
+            const [y, m, day] = d.split('-');
+            return `${day}-${m}-${y} ${t}`;
+        }
+
+        function setDay(day) {
+            selectedDay = day;
+            document.querySelectorAll('.day-btn').forEach(b => {
+                b.classList.remove('bg-blue-600', 'text-white');
+                b.classList.add('bg-white', 'text-slate-700');
+            });
+            document.getElementById('btn-' + day).classList.remove('bg-white', 'text-slate-700');
+            document.getElementById('btn-' + day).classList.add('bg-blue-600', 'text-white');
+            renderDashboard();
+        }
+
+        function renderDashboard() {
+            const metric = document.getElementById('metricSelect').value;
+
+            // Filter data by selected day only
+            const filtered = rawData.filter(r => {
+                return (selectedDay === 'ALL' || r.time.startsWith(selectedDay));
+            });
+
+            // Update Table
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = filtered.map(r => `
+                <tr class="hover:bg-slate-50">
+                    <td class="p-3 font-mono text-xs">${formatDate(r.time)}</td>
+                    <td class="p-3 text-orange-600 font-medium">${r.temp} °C</td>
+                    <td class="p-3 text-blue-600">${r.humidity} %</td>
+                    <td class="p-3 text-cyan-700">${r.rain} mm</td>
+                    <td class="p-3 text-slate-600">${r.wind} km/h</td>
+                </tr>
+            `).join('');
+
+            // Update Chart
+            const labels = filtered.map(r => r.time.split('T')[1]);
+            const values = filtered.map(r => r[metric]);
+            const colors = { temp: '#f97316', humidity: '#2563eb', rain: '#06b6d4', wind: '#10b981' };
+            const labelsMap = { temp: 'Temperature (°C)', humidity: 'Humidity (%)', rain: 'Precipitation (mm)', wind: 'Wind Speed (km/h)' };
+
+            document.getElementById('chartTitle').innerText = `Hourly ${labelsMap[metric]}`;
+            
+            if (chartInstance) chartInstance.destroy();
+            const ctx = document.getElementById('mainChart').getContext('2d');
+            chartInstance = new Chart(ctx, {
+                type: metric === 'rain' ? 'bar' : 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: labelsMap[metric],
+                        data: values,
+                        borderColor: colors[metric],
+                        backgroundColor: colors[metric] + '33',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { tooltip: { enabled: true } },
+                    scales: { x: { ticks: { maxTicksLimit: 10 } } }
+                }
+            });
+        }
+
+        // Initial render
+        renderDashboard();
+    </script>
+
+</body>
+</html>
